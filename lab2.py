@@ -171,18 +171,45 @@ def thirdOrderTest():
 
 
 def extractedge(inpic, scale, threshold, shape):
-    # ...
+    gaussianSmooth = discgaussfft(inpic, scale)
+    gradmagn = Lv(gaussianSmooth, "same")
+
+    Lvv = Lvvtilde(gaussianSmooth, shape)
+    Lvvv = Lvvvtilde(gaussianSmooth, shape)
+
+    Lvmask = gradmagn > threshold
+    LvvvMask = Lvvv < 0
+    curves = zerocrosscurves(Lvv, LvvvMask)
+    contours = thresholdcurves(curves, Lvmask)
     return contours
-#
-#
-# def houghline(curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False):
-#     # ...
-#     return linepar, acc
-#
-#
-# def houghedgeline(pic, scale, gradmagnthreshold, nrho, ntheta, nlines=20, verbose=False):
-#     # ...
-#     return linepar, acc
+
+
+def houghline(curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False):
+    acc = np.zeros((nrho, ntheta))
+    x, y = magnitude.shape
+    r = np.sqrt(x * x + y * y)
+    rho = np.linspace(-r, r, nrho)
+    theta = np.linspace(-np.pi/2, np.pi/2, ntheta)
+
+
+    # for i in range(len(curves)):
+    #
+    #     for j in
+
+    linepar = []
+
+
+    return linepar, acc
+
+
+def houghedgeline(pic, scale, gradmagnthreshold, nrho, ntheta, nlines=20, verbose=False):
+    curves = extractedge(pic, scale, gradmagnthreshold, "same")
+    gaussianSmooth = discgaussfft(pic, scale)
+    gradmagn = Lv(gaussianSmooth, "same")
+
+    linepar, acc = houghline(curves, gradmagn, nrho, ntheta, gradmagnthreshold, nlines, verbose)
+    return linepar, acc
+
 
 def differenceOperators():
     tools = np.load("Images-npy/few256.npy")
@@ -248,7 +275,26 @@ def gradientThresholding():
     plt.show()
 
 
+def extraction():
+    scale = 1.5
+    threshold = 10
+    tools = np.load("Images-npy/godthem256.npy")
+    edgecurves = extractedge(tools, scale, threshold, "same")
 
+    f = plt.figure()
+    f.subplots_adjust(wspace=0.2, hspace=0.4)
+    plt.rc('axes', titlesize=10)
+    a1 = f.add_subplot(1, 2, 1)
+    overlaycurves(tools, edgecurves)
+    a1.title.set_text("scale " + str(scale) + ", threshold " +str(threshold))
+
+    tools = np.load("Images-npy/few256.npy")
+    edgecurves = extractedge(tools, scale, threshold, "same")
+
+    a1 = f.add_subplot(1, 2, 2)
+    overlaycurves(tools, edgecurves)
+    a1.title.set_text("scale " + str(scale) + ", threshold " + str(threshold))
+    plt.show()
 
 if __name__ == '__main__':
     # differenceOperators()
@@ -256,4 +302,5 @@ if __name__ == '__main__':
     # LvvtildeTest()
     # thirdOrderTest()
     # LvvvtildeTest()
-    assembleSecondThird()
+    # assembleSecondThird()
+    extraction()
