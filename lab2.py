@@ -1,5 +1,6 @@
 import numpy as np
 # from numpy.fft import fft2, ifft2, fftshift
+from numpy import sort
 from scipy.signal import convolve2d, correlate2d
 import matplotlib.pyplot as plt
 
@@ -184,21 +185,72 @@ def extractedge(inpic, scale, threshold, shape):
     return contours
 
 
-def houghline(curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False):
+def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False):
     acc = np.zeros((nrho, ntheta))
     x, y = magnitude.shape
     r = np.sqrt(x * x + y * y)
     rho = np.linspace(-r, r, nrho)
     theta = np.linspace(-np.pi/2, np.pi/2, ntheta)
-
-
-    # for i in range(len(curves)):
-    #
-    #     for j in
+    for i in range(len(curves[0])):
+        x = curves[0][i]
+        y = curves[1][i]
+        curveMagn = magnitude[x][y]
+        if curveMagn > threshold:
+            for j in range(ntheta):
+                rhoVal = x * np.cos(theta[j]) + y * np.sin(theta[j])
+                rhoIndex = 0
+                minVal = float('inf')
+                for k in range(nrho):
+                    if abs(rho[k] - rhoVal) < minVal:
+                        rhoIndex = k
+                        minVal = abs(rho[k] - rhoVal)
+                acc[rhoIndex][j] += curveMagn
 
     linepar = []
+    outcurves = np.zeros((2, nlines * 4))
+    pos, value, _ = locmax8(acc)
+    indexvector = np.argsort(value)[-nlines:]
+    pos = pos[indexvector]
 
+    f = plt.figure(figsize=(8, 8), dpi=200)
+    f.subplots_adjust(wspace=0.2, hspace=0.4)
+    plt.rc('axes', titlesize=10)
+    a1 = f.add_subplot(2, 2, 1)
+    showgrey(pic, False)
+    a1.title.set_text("original")
+    a1 = f.add_subplot(2, 2, 2)
+    for idx in range(nlines):
+        thetaidxacc = pos[idx][0]
+        rhoidxacc = pos[idx][1]
+        rhoMax = rho[rhoidxacc]
+        thetaMax = theta[thetaidxacc]
+        linepar.append([rhoMax, thetaMax])
 
+        x0 = rhoMax * np.cos(thetaMax)
+        y0 = rhoMax * np.sin(thetaMax)
+        dx = r * r * (-np.sin(thetaMax))
+        dy = r * r * (np.cos(thetaMax))
+        plt.plot([y0 - dy, y0, y0 + dy], [x0 - dx, x0, x0 + dx], "r-")
+
+        outcurves[0][4 * idx + 0] = 0
+        outcurves[1][4 * idx + 0] = 3
+        outcurves[1][4 * idx + 1] = round(x0 - dx)
+        outcurves[0][4 * idx + 1] = round(y0 - dy)
+        outcurves[1][4 * idx + 2] = round(x0)
+        outcurves[0][4 * idx + 2] = round(y0)
+        outcurves[1][4 * idx + 3] = round(x0 + dx)
+        outcurves[0][4 * idx + 3] = round(y0 + dy)
+
+    a1.title.set_text("theta")
+    a1 = f.add_subplot(2, 2, 3)
+    showgrey(acc, False)
+
+    a1.title.set_text("acc")
+    # a1 = f.add_subplot(2, 2, 4)
+    # overlaycurves(magnitude, (outcurves[0], outcurves[1]))
+    # a1.title.set_text("scale=" + str(magnitude) + " threshold=" + str(threshold) + " nrho=" + str(nrho) + " ntheta=" +
+    #                   str(ntheta) + " nlines=" + str(nlines))
+    plt.show()
     return linepar, acc
 
 
@@ -207,7 +259,7 @@ def houghedgeline(pic, scale, gradmagnthreshold, nrho, ntheta, nlines=20, verbos
     gaussianSmooth = discgaussfft(pic, scale)
     gradmagn = Lv(gaussianSmooth, "same")
 
-    linepar, acc = houghline(curves, gradmagn, nrho, ntheta, gradmagnthreshold, nlines, verbose)
+    linepar, acc = houghline(pic, curves, gradmagn, nrho, ntheta, gradmagnthreshold, nlines, verbose)
     return linepar, acc
 
 
@@ -296,6 +348,16 @@ def extraction():
     a1.title.set_text("scale " + str(scale) + ", threshold " + str(threshold))
     plt.show()
 
+
+def houghTransform():
+    testimage1 = np.load("Images-npy/triangle128.npy")
+    smalltest1 = binsubsample(testimage1)
+    testimage2 = np.load("Images-npy/houghtest256.npy")
+    smalltest2 = binsubsample(binsubsample(testimage2))
+    linepar, acc = houghedgeline(testimage1, 2, 20, 400, 300, 3, True)
+
+
+
 if __name__ == '__main__':
     # differenceOperators()
     # gradientThresholding()
@@ -303,4 +365,5 @@ if __name__ == '__main__':
     # thirdOrderTest()
     # LvvvtildeTest()
     # assembleSecondThird()
-    extraction()
+    # extraction()
+    houghTransform()
