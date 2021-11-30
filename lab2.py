@@ -10,17 +10,13 @@ from gaussfft import gaussfft
 
 def deltax():
     # central
-    dxmask = [[0, -0.5, 0], [0, 0, 0], [0, 0.5, 0]]
-    dxmask = np.flip(dxmask, 0)
-    dxmask = np.flip(dxmask, 1)
+    dxmask = [[0, 0.5, 0], [0, 0, 0], [0, -0.5, 0]]
     return dxmask
 
 
 def deltay():
     # central
-    dymask = [[0, 0, 0], [-0.5, 0, 0.5], [0, 0, 0]]
-    dymask = np.flip(dymask, 0)
-    dymask = np.flip(dymask, 1)
+    dymask = [[0, 0, 0], [0.5, 0, -0.5], [0, 0, 0]]
     return dymask
 
 
@@ -34,20 +30,16 @@ def Lv(inpic, shape='same'):
 
 def Lvvtilde(inpic, shape='same'):
     dx = [[0, 0, 0, 0, 0],
-          [0, 0, -0.5, 0, 0],
-          [0, 0, 0, 0, 0],
           [0, 0, 0.5, 0, 0],
+          [0, 0, 0, 0, 0],
+          [0, 0, -0.5, 0, 0],
           [0, 0, 0, 0, 0],]
-    dx = np.flip(dx, 0)
-    dx = np.flip(dx, 1)
     dy = np.transpose(dx)
     dxx = [[0, 0, 0, 0, 0],
           [0, 0, 1, 0, 0],
           [0, 0, -2, 0, 0],
           [0, 0, 1, 0, 0],
           [0, 0, 0, 0, 0],]
-    dxx = np.flip(dxx, 0)
-    dxx = np.flip(dxx, 1)
     dyy = np.transpose(dxx)
     dxy = convolve2d(dx, dy, "same")
     Lx = convolve2d(inpic, dx, shape)
@@ -74,19 +66,15 @@ def LvvtildeTest():
 
 def Lvvvtilde(inpic, shape='same'):
     dx = [[0, 0, 0, 0, 0],
-          [0, 0, -0.5, 0, 0],
-          [0, 0, 0, 0, 0],
           [0, 0, 0.5, 0, 0],
+          [0, 0, 0, 0, 0],
+          [0, 0, -0.5, 0, 0],
           [0, 0, 0, 0, 0]]
-    dx = np.flip(dx, 0)
-    dx = np.flip(dx, 1)
     dxx = [[0, 0, 0, 0, 0],
            [0, 0, 1, 0, 0],
            [0, 0, -2, 0, 0],
            [0, 0, 1, 0, 0],
            [0, 0, 0, 0, 0]]
-    dxx = np.flip(dxx, 0)
-    dxx = np.flip(dxx, 1)
     dy = np.transpose(dx)
     dyy = np.transpose(dxx)
     dxy = convolve2d(dx, dy, "same")
@@ -137,7 +125,7 @@ def assembleSecondThird():
 
     for i in range(len(scale)):
         a1 = f.add_subplot(4, 3, i + 7)
-        showgrey((Lvvvtilde(discgaussfft(house, scale[i]), "same")<-5).astype(int), False)
+        showgrey(contour(Lvvvtilde(discgaussfft(house, scale[i]), "same")>0), False)
         a1.title.set_text("lvvv, " + str(scale[i]))
 
     plt.show()
@@ -145,20 +133,18 @@ def assembleSecondThird():
 
 def thirdOrderTest():
     [y, x] = np.meshgrid(range(-5, 6), range(-5, 6))
+    print(y)
+    print(x)
     dx = [[0, 0, 0, 0, 0],
-          [0, 0, -0.5, 0, 0],
-          [0, 0, 0, 0, 0],
           [0, 0, 0.5, 0, 0],
+          [0, 0, 0, 0, 0],
+          [0, 0, -0.5, 0, 0],
           [0, 0, 0, 0, 0]]
-    dx = np.flip(dx, 0)
-    dx = np.flip(dx, 1)
     dxx = [[0, 0, 0, 0, 0],
            [0, 0, 1, 0, 0],
            [0, 0, -2, 0, 0],
            [0, 0, 1, 0, 0],
            [0, 0, 0, 0, 0]]
-    dxx = np.flip(dxx, 0)
-    dxx = np.flip(dxx, 1)
     dy = np.transpose(dx)
     dyy = np.transpose(dxx)
     dxy = convolve2d(dx, dy, "same")
@@ -185,7 +171,7 @@ def extractedge(inpic, scale, threshold, shape):
     return contours
 
 
-def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False):
+def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbose=False, scale = 0):
     acc = np.zeros((nrho, ntheta))
     x, y = magnitude.shape
     r = np.sqrt(x * x + y * y)
@@ -198,16 +184,10 @@ def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbos
         if curveMagn > threshold:
             for j in range(ntheta):
                 rhoVal = x * np.cos(theta[j]) + y * np.sin(theta[j])
-                rhoIndex = 0
-                minVal = float('inf')
-                for k in range(nrho):
-                    if abs(rho[k] - rhoVal) < minVal:
-                        rhoIndex = k
-                        minVal = abs(rho[k] - rhoVal)
-                acc[rhoIndex][j] += curveMagn
+                rhoIndex = np.argmin(abs(rho - rhoVal))
+                acc[rhoIndex][j] += 1
 
     linepar = []
-    outcurves = np.zeros((2, nlines * 4))
     pos, value, _ = locmax8(acc)
     indexvector = np.argsort(value)[-nlines:]
     pos = pos[indexvector]
@@ -219,6 +199,7 @@ def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbos
     showgrey(pic, False)
     a1.title.set_text("original")
     a1 = f.add_subplot(2, 2, 2)
+    showgrey(pic, False)
     for idx in range(nlines):
         thetaidxacc = pos[idx][0]
         rhoidxacc = pos[idx][1]
@@ -228,28 +209,20 @@ def houghline(pic, curves, magnitude, nrho, ntheta, threshold, nlines=20, verbos
 
         x0 = rhoMax * np.cos(thetaMax)
         y0 = rhoMax * np.sin(thetaMax)
-        dx = r * r * (-np.sin(thetaMax))
-        dy = r * r * (np.cos(thetaMax))
+        dx = r * (-np.sin(thetaMax))
+        dy = r * (np.cos(thetaMax))
         plt.plot([y0 - dy, y0, y0 + dy], [x0 - dx, x0, x0 + dx], "r-")
 
-        outcurves[0][4 * idx + 0] = 0
-        outcurves[1][4 * idx + 0] = 3
-        outcurves[1][4 * idx + 1] = round(x0 - dx)
-        outcurves[0][4 * idx + 1] = round(y0 - dy)
-        outcurves[1][4 * idx + 2] = round(x0)
-        outcurves[0][4 * idx + 2] = round(y0)
-        outcurves[1][4 * idx + 3] = round(x0 + dx)
-        outcurves[0][4 * idx + 3] = round(y0 + dy)
 
-    a1.title.set_text("theta")
+    a1.title.set_text("curves")
     a1 = f.add_subplot(2, 2, 3)
     showgrey(acc, False)
 
     a1.title.set_text("acc")
-    # a1 = f.add_subplot(2, 2, 4)
-    # overlaycurves(magnitude, (outcurves[0], outcurves[1]))
-    # a1.title.set_text("scale=" + str(magnitude) + " threshold=" + str(threshold) + " nrho=" + str(nrho) + " ntheta=" +
-    #                   str(ntheta) + " nlines=" + str(nlines))
+    a1 = f.add_subplot(2, 2, 4)
+    overlaycurves(pic, curves)
+    a1.title.set_text("scale=" + str(scale) + " threshold=" + str(threshold) + " nrho=" + str(nrho) + " ntheta=" +
+                      str(ntheta) + " nlines=" + str(nlines))
     plt.show()
     return linepar, acc
 
@@ -259,7 +232,7 @@ def houghedgeline(pic, scale, gradmagnthreshold, nrho, ntheta, nlines=20, verbos
     gaussianSmooth = discgaussfft(pic, scale)
     gradmagn = Lv(gaussianSmooth, "same")
 
-    linepar, acc = houghline(pic, curves, gradmagn, nrho, ntheta, gradmagnthreshold, nlines, verbose)
+    linepar, acc = houghline(pic, curves, gradmagn, nrho, ntheta, gradmagnthreshold, nlines, verbose, scale)
     return linepar, acc
 
 
@@ -291,7 +264,7 @@ def gradientThresholding():
     dxtools = convolve2d(tools, deltax(), 'valid')
     dytools = convolve2d(tools, deltay(), 'valid')
     gradmagntools = np.sqrt(dxtools ** 2 + dytools ** 2)
-    threshold = [6, 10, 25]
+    threshold = [6, 25, 50]
     sigma = 0.5
 
     f = plt.figure(dpi= 160, figsize=(10,8))
